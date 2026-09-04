@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Sopas de Letras</title>
+    <style>
+        @page {
+            size: auto;
+            margin: 0mm;
+        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; background-color: #f4f6f9; color: #333; }
+        .puzzle-container { background: white; padding: 30px; margin-bottom: 40px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); page-break-after: always; max-width: 650px; margin-left: auto; margin-right: auto; }
+        h1 { text-align: center; color: #2c3e50; margin-bottom: 30px; }
+        h2 { color: #2c3e50; margin-top: 0; text-align: center; }
+        .header-info { margin-bottom: 20px; font-size: 16px; font-weight: bold; }
+        .header-info div { border-bottom: 2px solid #333; width: 100%; padding-bottom: 5px; }
+        
+        .content-wrapper { display: flex; justify-content: space-around; align-items: flex-start; flex-wrap: wrap; gap: 20px; }
+        .section-box { text-align: center; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; }
+        
+        table { margin: 10px auto; border-collapse: collapse; background: #fff; }
+        td { width: 34px; height: 34px; text-align: center; font-weight: bold; border: 1px solid #cbd5e1; font-size: 16px; color: #1e293b; }
+        
+        /* Lista de palabras abajo con checkboxes */
+        .word-list { 
+            text-align: left; 
+            margin: 20px auto 10px auto; 
+            font-size: 15px; 
+            color: #334155; 
+            max-width: 480px; 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 10px 20px; 
+        }
+        .word-item { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+        .checkbox-box {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #64748b;
+            border-radius: 3px;
+            display: inline-block;
+            background-color: #fff;
+        }
+        
+        .btn-container { text-align: right; margin-top: 20px; }
+        button { padding: 10px 20px; font-size: 14px; background-color: #2563eb; color: white; border: none; cursor: pointer; border-radius: 5px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        button:hover { background-color: #1d4ed8; }
+
+        @media print {
+            body { background: white; margin: 10mm; }
+            h1, .btn-container, .solution-box { display: none !important; }
+            .puzzle-container { box-shadow: none; margin: 0 auto; padding: 0; page-break-after: always; border: none; max-width: 100%; }
+            .content-wrapper { display: block; text-align: center; }
+            .section-box { border: none; padding: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Cuadernillo de Sopas de Letras</h1>
+    <div id="puzzles-wrapper"></div>
+
+    <script>
+        const words = ["MODERACION", "SERENIDAD", "PRUDENCIA", "EQUILIBRIO", "AUTOCONTROL", "MESURA", "PACIENCIA", "DOMINIO", "CALMA", "SOBRIEDAD"];
+        const colors = ["#fca5a5", "#fdba74", "#fde047", "#bef264", "#6ee7b7", "#5eead4", "#7dd3fc", "#a5b4fc", "#e879f9", "#fda4af"];
+
+        function generatePuzzle(wordsList, size = 16) {
+            const directions = [[0, 1], [1, 0], [1, 1], [-1, 1]];
+            let grid = Array(size).fill(0).map(() => Array(size).fill(""));
+            let solutionMap = Array(size).fill(0).map(() => Array(size).fill(null));
+            const sortedWords = [...wordsList].sort((a, b) => b.length - a.length);
+
+            sortedWords.forEach((word, index) => {
+                let placed = false;
+                let attempts = 0;
+                while (!placed && attempts < 200) {
+                    attempts++;
+                    let dir = directions[Math.floor(Math.random() * directions.length)];
+                    let dir_x = dir[0], dir_y = dir[1];
+                    let length = word.length;
+
+                    let max_x = dir_x <= 0 ? size - 1 : size - 1 - dir_x * (length - 1);
+                    let min_x = dir_x >= 0 ? 0 : (length - 1) * Math.abs(dir_x);
+                    let max_y = dir_y <= 0 ? size - 1 : size - 1 - dir_y * (length - 1);
+                    let min_y = dir_y >= 0 ? 0 : (length - 1) * Math.abs(dir_y);
+
+                    if (min_x > max_x || min_y > max_y) continue;
+
+                    let x = Math.floor(Math.random() * (max_x - min_x + 1)) + min_x;
+                    let y = Math.floor(Math.random() * (max_y - min_y + 1)) + min_y;
+
+                    let conflict = false;
+                    for (let i = 0; i < length; i++) {
+                        let nx = x + i * dir_x, ny = y + i * dir_y;
+                        if (grid[ny][nx] !== "" && grid[ny][nx] !== word[i]) {
+                            conflict = true;
+                            break;
+                        }
+                    }
+
+                    if (!conflict) {
+                        for (let i = 0; i < length; i++) {
+                            let nx = x + i * dir_x, ny = y + i * dir_y;
+                            grid[ny][nx] = word[i];
+                            solutionMap[ny][nx] = colors[index];
+                        }
+                        placed = true;
+                    }
+                }
+            });
+
+            const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            let cleanGrid = grid.map(row => [...row]);
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    if (cleanGrid[r][c] === "") {
+                        cleanGrid[r][c] = alphabet[Math.floor(Math.random() * alphabet.length)];
+                    }
+                }
+            }
+            return { cleanGrid, solutionMap };
+        }
+
+        function printSpecific(id) {
+            const allContainers = document.querySelectorAll('.puzzle-container');
+            allContainers.forEach(el => el.style.display = 'none');
+            const target = document.getElementById(id);
+            target.style.display = 'block';
+            window.print();
+            allContainers.forEach(el => el.style.display = 'block');
+        }
+
+        let wrapper = document.getElementById("puzzles-wrapper");
+        for (let idx = 1; idx <= 15; idx++) {
+            let { cleanGrid, solutionMap } = generatePuzzle(words);
+            let container = document.createElement("div");
+            container.className = "puzzle-container";
+            container.id = `puzzle-${idx}`;
+            
+            let html = `
+                <h2>Sopa de Letras #${idx}</h2>
+                <div class="header-info">
+                    <div>Nombre: ____________________________________________________________________</div>
+                </div>
+                <div class="content-wrapper">
+                    <!-- Sopa de Letras Sin Solucionar con lista abajo -->
+                    <div class="section-box">
+                        <table>`;
+            
+            for (let row of cleanGrid) {
+                html += "<tr>";
+                for (let cell of row) {
+                    html += `<td>${cell}</td>`;
+                }
+                html += "</tr>";
+            }
+            html += `</table>
+                        <div class="word-list">
+                            ${words.map(w => `<div class="word-item"><span class="checkbox-box"></span> ${w}</div>`).join('')}
+                        </div>
+                    </div>
+
+                    <!-- Solución a la Derecha (Se oculta al imprimir) -->
+                    <div class="section-box solution-box">
+                        <h3>Solución</h3>
+                        <div style="height: 24px; font-size: 13px; color: #64748b; margin-bottom: 10px;">Palabras coloreadas</div>
+                        <table>`;
+
+            for (let r = 0; r < solutionMap.length; r++) {
+                html += "<tr>";
+                for (let c = 0; c < solutionMap[r].length; c++) {
+                    let bg = solutionMap[r][c] ? `background-color: ${solutionMap[r][c]};` : '';
+                    html += `<td style="${bg}">${cleanGrid[r][c]}</td>`;
+                }
+                html += "</tr>";
+            }
+            html += `</table>
+                    </div>
+                </div>
+                <div class="btn-container">
+                    <button onclick="printSpecific('puzzle-${idx}')">📥 Descargar / Imprimir Sopa #${idx} (Solo sin solucionar)</button>
+                </div>`;
+
+            container.innerHTML = html;
+            wrapper.appendChild(container);
+        }
+    </script>
+</body>
+</html>
